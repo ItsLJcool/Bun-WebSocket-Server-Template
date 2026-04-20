@@ -12,7 +12,6 @@
   "scripts": {
     "dev": "bun run .",
     "start": "bun run .",
-    "build": "bun build . --outdir dist",
     "watch": "bun --watch ."
   }
 }

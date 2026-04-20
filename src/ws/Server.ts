@@ -1,10 +1,9 @@
 
-import { BaseRoute, type RouteHandler, buildRoutes } from "../api/Route";
-import { type BunRequest } from "bun";
+import { type RouteHandler, buildRoutes } from "../api/Route";
 
 const routes = await buildRoutes();
 
-export type WSData = {};
+export type WebClientData = {};
 export default class Server {
 	public static readonly HOST = (process.env.HOST ?? "localhost");
 	public static readonly PORT = Number(process.env.PORT ?? 3000);
@@ -14,9 +13,9 @@ export default class Server {
 
 	private static instance: Server;
 
-	public clients = new Set<Bun.ServerWebSocket<WSData>>();
-	private server: ReturnType<typeof Bun.serve<WSData>>;
+	public clients = new Set<Bun.ServerWebSocket<WebClientData>>();
 
+	private server: ReturnType<typeof Bun.serve<WebClientData>>;
 	public static get() {
 		if (!this.instance) this.instance = new Server();
 		return this.instance;
@@ -28,16 +27,17 @@ export default class Server {
 		if (Server.instance) console.error("Attempted to create a new instance of the Server class, yet one already exists.");
 		else console.log("Starting Server...");
 		
-		console.log(this.routes);
-		this.server = Bun.serve<WSData>({
-			routes: this.routes,
+		this.server = Bun.serve<WebClientData>({
 			hostname: Server.HOST,
 			port: Server.PORT,
+			
+			routes: this.routes,
 
 			fetch: this.handleFetch.bind(this),
 
 			websocket: {
-				data: {} as WSData,
+				data: {} as WebClientData,
+				// Causing issues fsr
 				// idleTimeout: Server.IDLE_TIMEOUT,
 				// maxPayloadLength: Server.PAYLOAD_LIMIT,
 				open: this.handleOpen.bind(this),
@@ -49,13 +49,13 @@ export default class Server {
 		console.log(`Server started on ${this.server.protocol}://${Server.HOST}:${Server.PORT}`);
 	}
 
-	public reload() {
-		this.server.reload({
-			routes: this.routes,
-		});
-	}
+	// public reload() {
+	// 	this.server.reload({
+	// 		routes: this.routes,
+	// 	});
+	// }
 
-	private handleFetch(req: Request, server: Bun.Server<WSData>) {
+	private handleFetch(req: Request, server: Bun.Server<WebClientData>) {
 		const url = new URL(req.url);
 
 		if (url.pathname === "/ws") {
@@ -63,19 +63,19 @@ export default class Server {
 			return new Response("Upgrade failed", { status: 500 });
 		}
 
-		return new Response("OK");
+		return new Response("Failed to fetch route.", { status: 404 });
 	}
 
-	private handleOpen(ws: Bun.ServerWebSocket<WSData>) {
+	private handleOpen(ws: Bun.ServerWebSocket<WebClientData>) {
 		ws.subscribe("global");
 		this.clients.add(ws);
 	}
 
-	private handleMessage(ws: Bun.ServerWebSocket<WSData>, message: string) {
+	private handleMessage(ws: Bun.ServerWebSocket<WebClientData>, message: string) {
 		// TODO: Make it parse message and direct messages to the correct classes.
 	}
 
-	private handleClose(ws: Bun.ServerWebSocket<WSData>) {
+	private handleClose(ws: Bun.ServerWebSocket<WebClientData>) {
 		ws.unsubscribe("global");
 		this.clients.delete(ws);
 	}

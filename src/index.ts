@@ -1,4 +1,4 @@
 import Server from "./ws/Server.ts";
 
-// Initalizes the server as a singleton.
+// Initalizes the server, and returns as a singleton.
 Server.get();

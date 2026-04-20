@@ -1,15 +1,18 @@
-# websocket-server-template
+# Bun WebSocket Server (Template)
+This is a general WebSocket Template to build off from.
 
-To install dependencies:
+### TODO
+- [x] Server Abstraction behind a Class
+- [x] Implement API Routes
+- [ ] Implement WebSocket classes for abstracting different interaction types
+- [ ] Finish the TODO list
 
-```bash
-bun install
-```
+To install the dependencies, run `bun install`. You can then run `bun start` to start the server directly.
+You can also use of the following:
+- `bun dev`
+	- Starts with development information. [Not done yet]
+- `bun start`
+	- Normal production starting.
+- `bun watch`
+	- Watches for changes in the filesystem, and restarts the program when a file is modified.
 
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.3.1. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.

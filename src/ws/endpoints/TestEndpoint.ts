@@ -10,14 +10,18 @@ export default class TestEndpoint extends BaseEndpoint {
 
 	async onClientConnect(client: Bun.ServerWebSocket<WebClientData>) {
 		console.log("Client connected! UUID:", client.data.uuid);
-		client.send("Hello World!");
+		const test = {
+			message: "Hello World!",
+			test: true
+		}
+		client.send(JSON.stringify(test));
 	}
 
 	async onClientDisconnect(client: Bun.ServerWebSocket<WebClientData>) {
 		console.log("Client disconnected!");
 	}
 
-	async onClientMessage(client: Bun.ServerWebSocket<WebClientData>, message: string | Buffer<ArrayBuffer>) {
+	async onClientMessage(client: Bun.ServerWebSocket<WebClientData>, message: any | Buffer<ArrayBuffer>) {
 		console.log("Client message received:", message);
 	}
 

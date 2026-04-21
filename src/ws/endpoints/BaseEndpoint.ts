@@ -83,6 +83,5 @@ export async function reloadEndpoints() {
 	if (size === 0) console.warn("No endpoints were initialized.");
 	else console.log(`Successfully initialized ${size} endpoints.`);
 
-	console.log(BaseEndpoint.registry);
 	return true;
 }

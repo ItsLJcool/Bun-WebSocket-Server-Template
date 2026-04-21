@@ -9,7 +9,6 @@ await reloadEndpoints();
 
 export type WebClientData = { uuid:string };
 export default class Server {
-	public static readonly HOST = (process.env.HOST ?? "localhost");
 	public static readonly PORT = Number(process.env.PORT ?? 3000);
 
 	// public static readonly PAYLOAD_LIMIT = Number( (Number(process.env.PAYLOAD_LIMIT) ?? 16) * (1024 * 1024) ); // 16 MB
@@ -36,7 +35,6 @@ export default class Server {
 		else console.log("Starting Server...");
 		
 		this._server = Bun.serve<WebClientData>({
-			hostname: Server.HOST,
 			port: Server.PORT,
 			
 			routes: this._routes,
@@ -44,6 +42,7 @@ export default class Server {
 			fetch: this.handleFetch.bind(this),
 
 			websocket: {
+				sendPings: true,
 				data: {} as WebClientData,
 				// Causing issues fsr
 				// idleTimeout: Server.IDLE_TIMEOUT,
@@ -54,7 +53,7 @@ export default class Server {
 			}
 		});
 
-		console.log(`Server started on ${this._server.protocol}://${Server.HOST}:${Server.PORT}`);
+		console.log(`Server started on ${this._server.url}`);
 	}
 
 	// public reload() {
@@ -65,8 +64,10 @@ export default class Server {
 
 	private async handleFetch(req: Request, server: Bun.Server<WebClientData>) {
 		const url = new URL(req.url);
+		
+		console.log("Upgrade request:", url.pathname);
 
-		if (url.pathname === "/ws") {
+		if (url.pathname.startsWith("/ws")) {
 			if (server.upgrade(req, { data: { uuid: crypto.randomUUID() } })) return;
 			return new Response("Upgrade failed", { status: 500 });
 		}
@@ -81,14 +82,25 @@ export default class Server {
 	}
 
 	private async handleMessage(ws: Bun.ServerWebSocket<WebClientData>, message: string | Buffer<ArrayBuffer>) {
-		const data = JSON.parse(message.toString());
-		const direct_endpoint = data.endpoint ?? data.fetch ?? data.endpoint_name;
-		if (direct_endpoint) {
-			const endpoint = BaseEndpoint.get(direct_endpoint);
-			if (!endpoint) return;
-			endpoint.onClientFetch(ws, data.message);
+		let isJson = false;
+		if (typeof message === "string") {
+			let data:any;
+			try {
+				data = JSON.parse(message);
+				isJson = true;
+			} catch {}
+
+			if (isJson) {
+				const direct_endpoint = data.endpoint ?? data.fetch ?? data.endpoint_name;
+				if (direct_endpoint) {
+					const endpoint = BaseEndpoint.get(direct_endpoint);
+					if (!endpoint) return;
+					endpoint.onClientFetch(ws, data);
+				} else
+					BaseEndpoint.registry.forEach(endpoint => endpoint.onClientMessage(ws, data));
+			}
 		} else
-			BaseEndpoint.registry.forEach(endpoint => endpoint.onClientMessage(ws, data.message));
+			BaseEndpoint.registry.forEach(endpoint => endpoint.onClientMessage(ws, message));
 	}
 
 	private async handleClose(ws: Bun.ServerWebSocket<WebClientData>) {

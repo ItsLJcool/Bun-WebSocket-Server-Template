@@ -4,7 +4,7 @@ This is a general WebSocket Template to build off from.
 ### TODO
 - [x] Server Abstraction behind a Class
 - [x] Implement API Routes
-- [ ] Implement WebSocket classes for abstracting different interaction types
+- [x] Implement WebSocket classes for abstracting different interaction types
 - [ ] Finish the TODO list
 
 To install the dependencies, run `bun install`. You can then run `bun start` to start the server directly.

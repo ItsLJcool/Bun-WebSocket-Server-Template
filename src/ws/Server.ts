@@ -1,9 +1,13 @@
 
-import { type RouteHandler, buildRoutes } from "../api/Route";
+import { type RouteHandler, buildRoutes } from "../api/BaseRoute";
+import BaseEndpoint, { reloadEndpoints } from "./endpoints/BaseEndpoint";
 
-const routes = await buildRoutes();
+// We need to await before we initalize the Server class
+const routes: Record<string, RouteHandler> = await buildRoutes();
 
-export type WebClientData = {};
+await reloadEndpoints();
+
+export type WebClientData = { uuid:string };
 export default class Server {
 	public static readonly HOST = (process.env.HOST ?? "localhost");
 	public static readonly PORT = Number(process.env.PORT ?? 3000);
@@ -13,25 +17,29 @@ export default class Server {
 
 	private static instance: Server;
 
-	public clients = new Set<Bun.ServerWebSocket<WebClientData>>();
+	private _clients = new Set<Bun.ServerWebSocket<WebClientData>>();
+	public static get clients() { return Server.get()._clients; }
 
-	private server: ReturnType<typeof Bun.serve<WebClientData>>;
+	private _server: ReturnType<typeof Bun.serve<WebClientData>>;
+	public static get bun_serve() { return Server.get()._server; }
+
 	public static get() {
 		if (!this.instance) this.instance = new Server();
 		return this.instance;
 	}
 
-	private routes: Record<string, RouteHandler> = routes;
+	private _routes: Record<string, RouteHandler> = routes;
+	public static get routes() { return Server.get()._routes; }
 
 	private constructor() {
 		if (Server.instance) console.error("Attempted to create a new instance of the Server class, yet one already exists.");
 		else console.log("Starting Server...");
 		
-		this.server = Bun.serve<WebClientData>({
+		this._server = Bun.serve<WebClientData>({
 			hostname: Server.HOST,
 			port: Server.PORT,
 			
-			routes: this.routes,
+			routes: this._routes,
 
 			fetch: this.handleFetch.bind(this),
 
@@ -46,7 +54,7 @@ export default class Server {
 			}
 		});
 
-		console.log(`Server started on ${this.server.protocol}://${Server.HOST}:${Server.PORT}`);
+		console.log(`Server started on ${this._server.protocol}://${Server.HOST}:${Server.PORT}`);
 	}
 
 	// public reload() {
@@ -55,28 +63,37 @@ export default class Server {
 	// 	});
 	// }
 
-	private handleFetch(req: Request, server: Bun.Server<WebClientData>) {
+	private async handleFetch(req: Request, server: Bun.Server<WebClientData>) {
 		const url = new URL(req.url);
 
 		if (url.pathname === "/ws") {
-			if (server.upgrade(req, { data: {} })) return;
+			if (server.upgrade(req, { data: { uuid: crypto.randomUUID() } })) return;
 			return new Response("Upgrade failed", { status: 500 });
 		}
 
 		return new Response("Failed to fetch route.", { status: 404 });
 	}
 
-	private handleOpen(ws: Bun.ServerWebSocket<WebClientData>) {
+	private async handleOpen(ws: Bun.ServerWebSocket<WebClientData>) {
 		ws.subscribe("global");
-		this.clients.add(ws);
+		this._clients.add(ws);
+		BaseEndpoint.registry.forEach(endpoint => endpoint.onClientConnect(ws));
 	}
 
-	private handleMessage(ws: Bun.ServerWebSocket<WebClientData>, message: string) {
-		// TODO: Make it parse message and direct messages to the correct classes.
+	private async handleMessage(ws: Bun.ServerWebSocket<WebClientData>, message: string | Buffer<ArrayBuffer>) {
+		const data = JSON.parse(message.toString());
+		const direct_endpoint = data.endpoint ?? data.fetch ?? data.endpoint_name;
+		if (direct_endpoint) {
+			const endpoint = BaseEndpoint.get(direct_endpoint);
+			if (!endpoint) return;
+			endpoint.onClientFetch(ws, data.message);
+		} else
+			BaseEndpoint.registry.forEach(endpoint => endpoint.onClientMessage(ws, data.message));
 	}
 
-	private handleClose(ws: Bun.ServerWebSocket<WebClientData>) {
+	private async handleClose(ws: Bun.ServerWebSocket<WebClientData>) {
 		ws.unsubscribe("global");
-		this.clients.delete(ws);
+		this._clients.delete(ws);
+		BaseEndpoint.registry.forEach(endpoint => endpoint.onClientDisconnect(ws));
 	}
 }

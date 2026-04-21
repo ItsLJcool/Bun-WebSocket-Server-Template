@@ -1,4 +1,4 @@
-import { BaseRoute } from "../Route";
+import { BaseRoute } from "../BaseRoute";
 import { type BunRequest } from "bun";
 
 export default class HelloRoute extends BaseRoute {

@@ -1,43 +1,50 @@
 
-import { type RouteHandler, buildRoutes } from "../api/BaseRoute";
+import BaseRoute, { type RouteHandler, reloadRoutes } from "../api/BaseRoute";
 import BaseEndpoint, { reloadEndpoints } from "./endpoints/BaseEndpoint";
 
-// We need to await before we initalize the Server class
-const routes: Record<string, RouteHandler> = await buildRoutes();
 
+// Reload the routes & endpoints, in which it also registers them
+await reloadRoutes();
 await reloadEndpoints();
 
 export type WebClientData = { uuid:string };
 export default class Server {
-	public static readonly PORT = Number(process.env.PORT ?? 3000);
+	/** Quick access to the port the server is running*/
+	public static get port() { return this.instance._server.port ?? Number(process.env.PORT ?? 3000); }
+
+	/** Whether or not to allow websocket upgrades. */
+	public static ALLOW_WEBSOCKET_UPGRADE = true;
 
 	// public static readonly PAYLOAD_LIMIT = Number( (Number(process.env.PAYLOAD_LIMIT) ?? 16) * (1024 * 1024) ); // 16 MB
 	// public static readonly IDLE_TIMEOUT = Number(process.env.IDLE_TIMEOUT ?? 120); // 120 seconds is the Bun Default
 
+	/** The singleton instance of the Server class. */
 	private static instance: Server;
 
+	/** The set of all connected clients. */
 	private _clients = new Set<Bun.ServerWebSocket<WebClientData>>();
+	/** Quick access to the connected clients. */
 	public static get clients() { return Server.get()._clients; }
 
+	/** The Bun.serve instance. */
 	private _server: ReturnType<typeof Bun.serve<WebClientData>>;
+	/** Quick access to the Bun.serve instance. */
 	public static get bun_serve() { return Server.get()._server; }
 
+	/** Gets the singleton instance of the Server class. */
 	public static get() {
 		if (!this.instance) this.instance = new Server();
 		return this.instance;
 	}
-
-	private _routes: Record<string, RouteHandler> = routes;
-	public static get routes() { return Server.get()._routes; }
 
 	private constructor() {
 		if (Server.instance) console.error("Attempted to create a new instance of the Server class, yet one already exists.");
 		else console.log("Starting Server...");
 		
 		this._server = Bun.serve<WebClientData>({
-			port: Server.PORT,
+			port: Number(process.env.PORT ?? 3000),
 			
-			routes: this._routes,
+			routes: BaseRoute.server_routes,
 
 			fetch: this.handleFetch.bind(this),
 
@@ -47,40 +54,49 @@ export default class Server {
 				// Causing issues fsr
 				// idleTimeout: Server.IDLE_TIMEOUT,
 				// maxPayloadLength: Server.PAYLOAD_LIMIT,
-				open: this.handleOpen.bind(this),
 				message: this.handleMessage.bind(this),
+				open: this.handleOpen.bind(this),
 				close: this.handleClose.bind(this),
+				drain: this.handleDrain.bind(this),
+				ping: this.handlePing.bind(this),
+				pong: this.handlePong.bind(this),
 			}
 		});
 
 		console.log(`Server started on ${this._server.url}`);
 	}
 
-	// public reload() {
-	// 	this.server.reload({
-	// 		routes: this.routes,
-	// 	});
-	// }
-
-	private async handleFetch(req: Request, server: Bun.Server<WebClientData>) {
+	/** Here you can add logic to determine if the request should be checked for a websocket upgrade. */
+	private attempt_upgrade(req: Request, server: Bun.Server<WebClientData>):boolean {
+		if (!Server.ALLOW_WEBSOCKET_UPGRADE) return false;
 		const url = new URL(req.url);
-		
-		console.log("Upgrade request:", url.pathname);
+		return url.pathname.startsWith("/ws");
+	}
 
-		if (url.pathname.startsWith("/ws")) {
-			if (server.upgrade(req, { data: { uuid: crypto.randomUUID() } })) return;
+	/** This is called when we want to initiate a websocket upgrade, with data alongside the client. */
+	private upgrade_data():{data:WebClientData} {
+		return {data: { uuid: crypto.randomUUID() }};
+	}
+
+	/** Handles the fetch requests. */
+	private async handleFetch(req: Request, server: Bun.Server<WebClientData>) {
+		
+		if (this.attempt_upgrade(req, server)) {
+			if (server.upgrade(req, this.upgrade_data())) return;
 			return new Response("Upgrade failed", { status: 500 });
 		}
 
 		return new Response("Failed to fetch route.", { status: 404 });
 	}
 
+	/** Handles the websocket open event. */
 	private async handleOpen(ws: Bun.ServerWebSocket<WebClientData>) {
 		ws.subscribe("global");
 		this._clients.add(ws);
 		BaseEndpoint.registry.forEach(endpoint => endpoint.onClientConnect(ws));
 	}
 
+	/** Handles the websocket message event. */
 	private async handleMessage(ws: Bun.ServerWebSocket<WebClientData>, message: string | Buffer<ArrayBuffer>) {
 		let isJson = false;
 		if (typeof message === "string") {
@@ -103,9 +119,25 @@ export default class Server {
 			BaseEndpoint.registry.forEach(endpoint => endpoint.onClientMessage(ws, message));
 	}
 
+	/** Handles the websocket close event. */
 	private async handleClose(ws: Bun.ServerWebSocket<WebClientData>) {
 		ws.unsubscribe("global");
 		this._clients.delete(ws);
 		BaseEndpoint.registry.forEach(endpoint => endpoint.onClientDisconnect(ws));
+	}
+
+	/** Handles the websocket drain event. */
+	private async handleDrain(ws: Bun.ServerWebSocket<WebClientData>) {
+		// console.log("Drain event received... uhhhhhh");
+	}
+
+	/** Handles the websocket ping event. */
+	private async handlePing(ws: Bun.ServerWebSocket<WebClientData>, data: Buffer) {
+		// console.log("Ping event received... uhhhhhh");
+	}
+
+	/** Handles the websocket pong event. */
+	private async handlePong(ws: Bun.ServerWebSocket<WebClientData>, data: Buffer) {
+		// console.log("Pong event received... uhhhhhh");
 	}
 }

@@ -1,4 +1,4 @@
-import { BaseRoute } from "../BaseRoute";
+import BaseRoute from "../BaseRoute";
 import { type BunRequest } from "bun";
 
 export default class HelloRoute extends BaseRoute {
@@ -8,4 +8,8 @@ export default class HelloRoute extends BaseRoute {
 			return new Response("Hello World!");
 		},
 	};
+
+	static {
+		this.register();
+	}
 }

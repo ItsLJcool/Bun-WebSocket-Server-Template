@@ -1,7 +1,5 @@
 import Server, { type WebClientData } from "../Server";
-import { Glob, type BunRequest } from "bun";
-
-// export type RouteHandler = (req: BunRequest) => Response | Promise<Response>;
+import { Glob } from "bun";;
 
 export type EndpointCollection = Record<string, BaseEndpoint>;
 
@@ -80,7 +78,7 @@ export async function reloadEndpoints() {
 	}
 
 	const size = BaseEndpoint.registry.size;
-	if (size === 0) console.warn("No endpoints were initialized.");
+	if (size <= 0) console.warn("No endpoints were initialized.");
 	else console.log(`Successfully initialized ${size} endpoints.`);
 
 	return true;

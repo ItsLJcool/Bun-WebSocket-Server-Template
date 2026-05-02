@@ -1,25 +1,24 @@
 
-import BaseRoute, { type RouteHandler, reloadRoutes } from "../api/BaseRoute";
+import BaseRoute, { reloadRoutes } from "../api/BaseRoute";
 import BaseEndpoint, { reloadEndpoints } from "./endpoints/BaseEndpoint";
-
 
 // Reload the routes & endpoints, in which it also registers them
 await reloadRoutes();
 await reloadEndpoints();
 
-export type WebClientData = { uuid:string };
+export type WebClientData = { uuid:string, is_guest:boolean };
 export default class Server {
 	/** Quick access to the port the server is running*/
-	public static get port() { return this.instance._server.port ?? Number(process.env.PORT ?? 3000); }
+	public static get port():number { return this.instance._server.port ?? Number(process.env.PORT ?? 3000); }
 
 	/** Whether or not to allow websocket upgrades. */
-	public static ALLOW_WEBSOCKET_UPGRADE = true;
+	public static ALLOW_WEBSOCKET_UPGRADE:boolean = true;
 
 	// public static readonly PAYLOAD_LIMIT = Number( (Number(process.env.PAYLOAD_LIMIT) ?? 16) * (1024 * 1024) ); // 16 MB
 	// public static readonly IDLE_TIMEOUT = Number(process.env.IDLE_TIMEOUT ?? 120); // 120 seconds is the Bun Default
 
 	/** The singleton instance of the Server class. */
-	private static instance: Server;
+	private static instance:Server;
 
 	/** The set of all connected clients. */
 	private _clients = new Set<Bun.ServerWebSocket<WebClientData>>();
@@ -27,7 +26,7 @@ export default class Server {
 	public static get clients() { return Server.get()._clients; }
 
 	/** The Bun.serve instance. */
-	private _server: ReturnType<typeof Bun.serve<WebClientData>>;
+	private _server:ReturnType<typeof Bun.serve<WebClientData>>;
 	/** Quick access to the Bun.serve instance. */
 	public static get bun_serve() { return Server.get()._server; }
 
@@ -38,7 +37,7 @@ export default class Server {
 	}
 
 	private constructor() {
-		if (Server.instance) console.error("Attempted to create a new instance of the Server class, yet one already exists.");
+		if (Server.instance) throw new Error("Attempted to create a new instance of the Server class, yet one already exists.");
 		else console.log("Starting Server...");
 		
 		this._server = Bun.serve<WebClientData>({
@@ -70,12 +69,15 @@ export default class Server {
 	private attempt_upgrade(req: Request, server: Bun.Server<WebClientData>):boolean {
 		if (!Server.ALLOW_WEBSOCKET_UPGRADE) return false;
 		const url = new URL(req.url);
+
+		// You can parse the request, and check for any Handshake headers if you need to.
+
 		return url.pathname.startsWith("/ws");
 	}
 
 	/** This is called when we want to initiate a websocket upgrade, with data alongside the client. */
 	private upgrade_data():{data:WebClientData} {
-		return {data: { uuid: crypto.randomUUID() }};
+		return {data: { uuid: crypto.randomUUID(), is_guest: true }};
 	}
 
 	/** Handles the fetch requests. */

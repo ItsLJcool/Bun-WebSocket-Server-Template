@@ -1,6 +1,11 @@
 # dependencies (bun install)
 node_modules
 
+# Database Output
+app.db
+app.db-shm
+app.db-wal
+
 # TLS certificates
 *.pem
 

@@ -1,6 +1,6 @@
 
 import BaseRoute, { reloadRoutes } from "../api/BaseRoute";
-import BaseEndpoint, { reloadEndpoints } from "./endpoints/BaseEndpoint";
+import BaseEndpoint, { reloadEndpoints } from "./BaseEndpoint";
 
 // Reload the routes & endpoints, in which it also registers them
 await reloadRoutes();

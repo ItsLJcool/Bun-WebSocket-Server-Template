@@ -1,5 +1,5 @@
 import { type WebClientData } from "../Server";
-import BaseEndpoint from "./BaseEndpoint";
+import BaseEndpoint from "../BaseEndpoint";
 
 export default class TestEndpoint extends BaseEndpoint {
 	static {

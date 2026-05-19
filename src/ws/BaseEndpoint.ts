@@ -1,4 +1,4 @@
-import Server, { type WebClientData } from "../Server";
+import Server, { type WebClientData } from "./Server";
 import { Glob } from "bun";;
 
 export type EndpointCollection = Record<string, BaseEndpoint>;
@@ -68,7 +68,7 @@ export default abstract class BaseEndpoint {
 }
 
 /* Initalize all sub-classes of BaseEndpoint */
-const ENDPOINT_PATH = `${import.meta.dir}/`;
+const ENDPOINT_PATH = `${import.meta.dir}/endpoints/`;
 export async function reloadEndpoints() {
 	console.log("Initializing Endpoints...");
 

@@ -28,12 +28,12 @@ export default class UserDB extends BaseDB {
 	// Since you are manually talking to SQLite, you need to manually create the table if it doesn't exist.
 	// Including handling migrations.
 	static {
-	this.db.run(`
+		this.db.run(`
 		CREATE TABLE IF NOT EXISTS users (
 			id TEXT PRIMARY KEY,
 			username TEXT NOT NULL
 		)
-	`);
+		`);
 	}
 
 	/**

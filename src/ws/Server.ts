@@ -14,6 +14,7 @@ export default class Server {
 	/** Whether or not to allow websocket upgrades. */
 	public static ALLOW_WEBSOCKET_UPGRADE:boolean = true;
 
+	// Causing issues fsr
 	// public static readonly PAYLOAD_LIMIT = Number( (Number(process.env.PAYLOAD_LIMIT) ?? 16) * (1024 * 1024) ); // 16 MB
 	// public static readonly IDLE_TIMEOUT = Number(process.env.IDLE_TIMEOUT ?? 120); // 120 seconds is the Bun Default
 
